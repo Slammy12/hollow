@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hollow — Coin Launchpad</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0A0D0A;
+    --surface: #12160F;
+    --surface-2: #171D14;
+    --surface-3: #1D2419;
+    --border: #262F22;
+    --border-strong: #35402F;
+    --text-primary: #EEF3EA;
+    --text-secondary: #98A690;
+    --text-muted: #5C6957;
+    --amber: #E8A33D;
+    --amber-dim: #4A3A1F;
+    --amber-text: #F4C579;
+    --green: #4ADE80;
+    --green-dim: #1B3324;
+    --red: #E0574A;
+    --red-dim: #3A1F1C;
+    --radius: 10px;
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    min-height:100vh;
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(255,255,255,0.035) 1px, transparent 0);
+    background-size: 28px 28px;
+  }
+  ::selection{ background: var(--amber-dim); color: var(--amber-text); }
+  a{ color:inherit; text-decoration:none; }
+  button{ font-family:inherit; cursor:pointer; }
+
+  .tabular{ font-variant-numeric: tabular-nums; }
+
+  /* ---------- LOGIN VIEW ---------- */
+  #login-view{
+    min-height:100vh;
+    display:grid;
+    grid-template-columns: 1.1fr 1fr;
+  }
+  @media (max-width: 880px){
+    #login-view{ grid-template-columns: 1fr; }
+    .login-side{ display:none; }
+  }
+  .login-side{
+    background: var(--surface);
+    border-right:1px solid var(--border);
+    padding: 56px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    position:relative;
+    overflow:hidden;
+  }
+  .brand-mark{
+    display:flex; align-items:center; gap:10px;
+  }
+  .brand-mark .dot{
+    width:9px; height:9px; border-radius:50%;
+    background: var(--green);
+    box-shadow: 0 0 0 3px var(--green-dim);
+  }
+  .brand-mark span{
+    font-family: var(--font-display);
+    font-weight:600;
+    font-size:18px;
+    letter-spacing:0.01em;
+  }
+  .terminal{
+    font-family: var(--font-mono);
+    font-size:13px;
+    line-height:1.9;
+    color: var(--text-secondary);
+    max-width:420px;
+  }
+  .terminal .prompt{ color: var(--amber-text); }
+  .terminal .ok{ color: var(--green); }
+  .terminal .cursor{
+    display:inline-block; width:7px; height:14px;
+    background: var(--text-primary);
+    vertical-align:middle;
+    animation: blink 1s step-end infinite;
+  }
+  @keyframes blink{ 50%{ opacity:0; } }
+  .side-footer{
+    font-size:13px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+  }
+
+  .login-form-side{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding: 40px 24px;
+  }
+  .login-card{ width:100%; max-width:380px; }
+  .login-card h1{
+    font-family: var(--font-display);
+    font-size:26px;
+    font-weight:600;
+    margin-bottom:6px;
+  }
+  .login-card p.sub{
+    color: var(--text-secondary);
+    font-size:14px;
+    margin-bottom:32px;
+  }
+  .field{ margin-bottom:16px; }
+  .field label{
+    display:block;
+    font-size:12px;
+    color: var(--text-secondary);
+    margin-bottom:6px;
+    font-weight:500;
+  }
+  .field input{
+    width:100%;
+    background: var(--surface-2);
+    border:1px solid var(--border);
+    border-radius: var(--radius);
+    padding:11px 13px;
+    color: var(--text-primary);
+    font-size:14px;
+    font-family: var(--font-body);
+    outline:none;
+    transition: border-color .15s ease;
+  }
+  .field input::placeholder{ color: var(--text-muted); }
+  .field input:focus{ border-color: var(--amber); }
+  .row-between{ display:flex; justify-content:space-between; align-items:center; margin-bottom:22px; font-size:13px; }
+  .row-between label{ display:flex; align-items:center; gap:7px; color: var(--text-secondary); cursor:pointer; }
+  .row-between a{ color: var(--amber-text); }
+  input[type=checkbox]{ accent-color: var(--amber); width:14px; height:14px; }
+
+  .btn-primary{
+    width:100%;
+    background: var(--amber);
+    color: #241804;
+    border:none;
+    border-radius: var(--radius);
+    padding:12px;
+    font-size:14px;
+    font-weight:600;
+    font-family: var(--font-body);
+    transition: filter .15s ease, transform .1s ease;
+  }
+  .btn-primary:hover{ filter:brightness(1.08); }
+  .btn-primary:active{ transform: scale(0.98); }
+  .btn-primary:disabled{ opacity:.6; cursor:progress; }
+
+  .divider{
+    display:flex; align-items:center; gap:12px;
+    margin: 22px 0; color: var(--text-muted); font-size:12px;
+  }
+  .divider::before, .divider::after{
+    content:''; flex:1; height:1px; background: var(--border);
+  }
+  .switch-line{
+    text-align:center; font-size:13px; color: var(--text-secondary); margin-top:22px;
+  }
+  .switch-line a{ color: var(--amber-text); font-weight:500; }
+  .error-msg{
+    display:none;
+    background: var(--red-dim);
+    border:1px solid #5A2B24;
+    color: #F3A79C;
+    font-size:13px;
+    padding:9px 12px;
+    border-radius: var(--radius);
+    margin-bottom:16px;
+  }
+
+  /* ---------- DASHBOARD VIEW ---------- */
+  #dashboard-view{ display:none; min-height:100vh; }
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 16px 32px;
+    border-bottom:1px solid var(--border);
+    background: var(--surface);
+  }
+  .topbar nav{ display:flex; gap:28px; align-items:center; }
+  .topbar nav a{
+    font-size:14px; color: var(--text-secondary); font-weight:500;
+    padding:6px 0; border-bottom:2px solid transparent;
+  }
+  .topbar nav a.active{ color: var(--text-primary); border-bottom-color: var(--amber); }
+  .topbar-right{ display:flex; align-items:center; gap:16px; }
+  .wallet-chip{
+    font-family: var(--font-mono);
+    font-size:12px;
+    color: var(--text-secondary);
+    background: var(--surface-2);
+    border:1px solid var(--border);
+    padding:6px 10px;
+    border-radius:20px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .wallet-chip .live-dot{
+    width:6px; height:6px; border-radius:50%; background: var(--green);
+  }
+  .avatar{
+    width:32px; height:32px; border-radius:50%;
+    background: var(--amber-dim);
+    color: var(--amber-text);
+    display:flex; align-items:center; justify-content:center;
+    font-family: var(--font-display); font-weight:600; font-size:13px;
+  }
+  .logout-btn{
+    background:none; border:1px solid var(--border); color: var(--text-secondary);
+    border-radius:8px; padding:7px 9px; font-size:13px; display:flex; align-items:center;
+  }
+  .logout-btn:hover{ border-color: var(--border-strong); color: var(--text-primary); }
+
+  .page{ padding: 40px 32px 64px; max-width:1180px; margin:0 auto; }
+  .page-head{
+    display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:28px; flex-wrap:wrap; gap:16px;
+  }
+  .page-head h2{
+    font-family: var(--font-display); font-size:28px; font-weight:600;
+  }
+  .page-head p{ color: var(--text-secondary); font-size:14px; margin-top:4px; }
+  .btn-amber{
+    background: var(--amber); color:#241804; border:none;
+    border-radius: var(--radius); padding:10px 16px;
+    font-weight:600; font-size:14px; display:flex; align-items:center; gap:7px;
+  }
+  .btn-amber:hover{ filter:brightness(1.08); }
+
+  .stat-grid{
+    display:grid; grid-template-columns: 1.3fr 1fr 1fr; gap:16px; margin-bottom:36px;
+  }
+  @media (max-width:760px){ .stat-grid{ grid-template-columns:1fr; } }
+  .card{
+    background: var(--surface);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:20px 22px;
+  }
+  .card-label-row{ display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; }
+  .card-label{ display:flex; align-items:center; gap:8px; color: var(--text-secondary); font-size:13px; font-weight:500; }
+  .card-actions{ display:flex; gap:8px; }
+  .pill-btn{
+    font-size:12px; font-weight:600; padding:6px 12px; border-radius:20px; border:1px solid var(--border-strong);
+    background:transparent; color: var(--text-secondary);
+  }
+  .pill-btn.deposit{ background: var(--green); color:#0C2115; border:none; }
+  .pill-btn.deposit:hover{ filter:brightness(1.08); }
+  .pill-btn.withdraw:hover{ border-color: var(--text-secondary); color: var(--text-primary); }
+  .big-number{ font-family: var(--font-display); font-size:32px; font-weight:600; }
+  .sub-number{ font-family: var(--font-mono); font-size:12.5px; color: var(--text-muted); margin-top:6px; }
+  .address-row{
+    margin-top:14px; display:flex; align-items:center; gap:8px;
+    font-family: var(--font-mono); font-size:11.5px; color: var(--text-muted);
+    background: var(--surface-2); border:1px solid var(--border);
+    padding:8px 10px; border-radius:8px;
+  }
+  .address-row .addr{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .copy-btn{
+    background:none; border:none; color: var(--text-secondary); font-size:11px; font-family:var(--font-mono);
+    padding:2px 6px; border-radius:5px;
+  }
+  .copy-btn:hover{ background: var(--surface-3); color: var(--text-primary); }
+
+  .icon-badge{
+    width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center;
+    font-size:16px;
+  }
+  .icon-badge.green{ background: var(--green-dim); color: var(--green); }
+  .icon-badge.amber{ background: var(--amber-dim); color: var(--amber-text); }
+
+  .section-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px; }
+  .section-head h3{ font-family: var(--font-display); font-size:18px; font-weight:600; }
+  .section-head p{ color: var(--text-secondary); font-size:13px; margin-top:2px; }
+  .section-tools{ display:flex; gap:10px; }
+  .search-input{
+    background: var(--surface-2); border:1px solid var(--border); border-radius:8px;
+    padding:8px 12px 8px 32px; font-size:13px; color: var(--text-primary); width:220px;
+    font-family:var(--font-body); position:relative;
+  }
+  .search-wrap{ position:relative; }
+  .search-wrap::before{
+    content:'⌕'; position:absolute; left:11px; top:50%; transform:translateY(-50%);
+    color: var(--text-muted); font-size:14px;
+  }
+  .filter-select{
+    background: var(--surface-2); border:1px solid var(--border); border-radius:8px;
+    padding:8px 12px; font-size:13px; color: var(--text-primary); font-family:var(--font-body);
+  }
+
+  .empty-panel{
+    background: var(--surface);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:64px 24px;
+    text-align:center;
+    margin-bottom:36px;
+  }
+  .empty-panel .glyph{
+    width:44px; height:44px; margin:0 auto 18px; border-radius:12px;
+    background: var(--surface-3); border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center; font-size:19px; color: var(--text-muted);
+  }
+  .empty-panel h4{ font-family: var(--font-display); font-size:16px; font-weight:600; margin-bottom:6px; }
+  .empty-panel p{ color: var(--text-secondary); font-size:13.5px; margin-bottom:20px; }
+
+  .footnote{
+    text-align:center; color: var(--text-muted); font-size:12px; font-family: var(--font-mono); margin-top:8px;
+  }
+
+  /* ---------- COIN GRID ---------- */
+  .coin-grid{
+    display:grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap:14px; margin-bottom:36px;
+  }
+  .coin-card{
+    background: var(--surface); border:1px solid var(--border); border-radius:14px;
+    padding:16px; display:flex; flex-direction:column; gap:12px;
+    animation: rise .25s ease;
+  }
+  @keyframes rise{ from{ opacity:0; transform: translateY(6px); } to{ opacity:1; transform:none; } }
+  .coin-card-top{ display:flex; gap:12px; align-items:center; }
+  .coin-thumb{
+    width:44px; height:44px; border-radius:10px; background: var(--surface-3);
+    display:flex; align-items:center; justify-content:center; font-size:18px; color: var(--text-secondary);
+    overflow:hidden; flex-shrink:0; border:1px solid var(--border);
+  }
+  .coin-thumb img{ width:100%; height:100%; object-fit:cover; }
+  .coin-name{ font-family: var(--font-display); font-weight:600; font-size:14.5px; }
+  .coin-ticker{ font-family: var(--font-mono); font-size:12px; color: var(--text-muted); }
+  .coin-status{
+    margin-left:auto; font-size:10.5px; font-weight:600; padding:3px 8px; border-radius:20px;
+    background: var(--green-dim); color: var(--green); height:fit-content; text-transform:uppercase; letter-spacing:.02em;
+  }
+  .coin-desc{ font-size:12.5px; color: var(--text-secondary); line-height:1.5; min-height:18px; }
+  .coin-stats-row{ display:flex; justify-content:space-between; font-family: var(--font-mono); font-size:12px; }
+  .coin-stats-row .mc-val{ color: var(--text-primary); font-weight:500; }
+  .coin-stats-row .mc-label{ color: var(--text-muted); }
+  .bonding-track{ height:6px; border-radius:4px; background: var(--surface-3); overflow:hidden; }
+  .bonding-fill{ height:100%; background: var(--amber); border-radius:4px; transition: width .4s ease; }
+  .bonding-caption{ font-family: var(--font-mono); font-size:10.5px; color: var(--text-muted); display:flex; justify-content:space-between; }
+  .coin-card-actions{ display:flex; gap:8px; margin-top:2px; }
+  .coin-card-actions button{ flex:1; padding:8px; border-radius:8px; font-size:12.5px; font-weight:600; }
+  .btn-buy{ background: var(--green); color:#0C2115; border:none; }
+  .btn-buy:hover{ filter:brightness(1.08); }
+  .btn-boost{ background:transparent; border:1px solid var(--border-strong); color: var(--text-secondary); }
+  .btn-boost:hover{ color: var(--amber-text); border-color: var(--amber); }
+
+  /* ---------- MODAL ---------- */
+  .modal-overlay{
+    display:none; position:fixed; inset:0; background: rgba(4,6,3,0.72);
+    align-items:center; justify-content:center; z-index:50; padding:20px;
+  }
+  .modal-overlay.open{ display:flex; }
+  .modal-card{
+    background: var(--surface); border:1px solid var(--border); border-radius:16px;
+    width:100%; max-width:440px; max-height:90vh; overflow:auto;
+    animation: rise .18s ease;
+  }
+  .modal-head{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:18px 22px; border-bottom:1px solid var(--border);
+  }
+  .modal-head h3{ font-family: var(--font-display); font-size:17px; font-weight:600; }
+  .modal-close{ background:none; border:none; color: var(--text-secondary); font-size:14px; padding:4px; }
+  .modal-close:hover{ color: var(--text-primary); }
+  .modal-body{ padding:20px 22px; }
+  .modal-foot{
+    display:flex; gap:10px; padding:16px 22px; border-top:1px solid var(--border);
+  }
+  .modal-foot .btn-amber{ flex:1; justify-content:center; }
+  .modal-foot .pill-btn{ flex:1; text-align:center; }
+  .field-row{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .image-upload-row{ display:flex; gap:14px; margin-bottom:18px; align-items:flex-start; }
+  .image-drop{
+    width:76px; height:76px; border-radius:12px; border:1px dashed var(--border-strong);
+    background: var(--surface-2); display:flex; align-items:center; justify-content:center;
+    font-size:22px; color: var(--text-muted); cursor:pointer; flex-shrink:0; overflow:hidden;
+  }
+  .image-drop:hover{ border-color: var(--amber); color: var(--amber-text); }
+  .image-drop img{ width:100%; height:100%; object-fit:cover; }
+  .field input:disabled{ cursor:not-allowed; }
+
+  /* ---------- WIZARD ---------- */
+  .step-tracker{
+    display:flex; align-items:center; gap:8px;
+    padding:16px 22px 0;
+  }
+  .step-tracker-item{
+    display:flex; align-items:center; gap:7px;
+    font-size:12.5px; color: var(--text-muted); font-weight:500;
+  }
+  .step-tracker-item.active{ color: var(--text-primary); }
+  .step-tracker-item.done{ color: var(--green); }
+  .step-num{
+    width:20px; height:20px; border-radius:50%; background: var(--surface-3);
+    border:1px solid var(--border-strong); display:flex; align-items:center; justify-content:center;
+    font-size:11px; font-family: var(--font-mono); flex-shrink:0;
+  }
+  .step-tracker-item.active .step-num{ background: var(--amber-dim); border-color: var(--amber); color: var(--amber-text); }
+  .step-tracker-item.done .step-num{ background: var(--green-dim); border-color: var(--green); color: var(--green); }
+  .step-tracker-line{ flex:1; height:1px; background: var(--border); margin-top:-14px; }
+
+  .step-intro{ font-size:13px; color: var(--text-secondary); margin-bottom:16px; line-height:1.5; }
+  .field-hint{ font-size:11.5px; color: var(--text-muted); font-family: var(--font-mono); margin-top:6px; }
+
+  .slippage-row{ display:flex; align-items:center; gap:7px; }
+  .slip-chip{
+    background: var(--surface-2); border:1px solid var(--border); color: var(--text-secondary);
+    font-size:12.5px; font-weight:500; padding:8px 11px; border-radius:8px;
+  }
+  .slip-chip:hover{ border-color: var(--border-strong); }
+  .slip-chip.active{ background: var(--amber-dim); border-color: var(--amber); color: var(--amber-text); }
+  .slip-custom{
+    width:56px; background: var(--surface-2); border:1px solid var(--border); border-radius:8px;
+    padding:8px 8px; color: var(--text-primary); font-size:12.5px; text-align:right; font-family:var(--font-mono);
+  }
+  .slip-pct{ color: var(--text-muted); font-size:12.5px; }
+
+  .wallet-slider-row{ display:flex; align-items:center; gap:12px; }
+  .wallet-slider-row input[type=range]{ flex:1; accent-color: var(--amber); }
+  .wallet-count-badge{
+    font-family: var(--font-mono); font-size:13px; font-weight:500;
+    background: var(--surface-2); border:1px solid var(--border); border-radius:8px;
+    padding:6px 10px; min-width:34px; text-align:center;
+  }
+
+  /* ---------- TOAST ---------- */
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(12px);
+    background: var(--surface-3); border:1px solid var(--border-strong); color: var(--text-primary);
+    padding:10px 18px; border-radius:20px; font-size:13px; z-index:60;
+    opacity:0; pointer-events:none; transition: opacity .2s ease, transform .2s ease;
+    display:flex; align-items:center; gap:8px;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+  .toast .dot{ width:6px; height:6px; border-radius:50%; background: var(--green); }
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN VIEW ============ -->
+<div id="login-view">
+  <div class="login-side">
+    <div class="brand-mark"><span class="dot"></span><span>hollow.</span></div>
+    <div class="terminal">
+      <div><span class="prompt">$</span> connecting to network<span class="ok">... ok</span></div>
+      <div><span class="prompt">$</span> verifying session<span class="ok">... ok</span></div>
+      <div><span class="prompt">$</span> awaiting credentials<span class="cursor"></span></div>
+    </div>
+    <div class="side-footer">mockup build — no live funds are moved on this screen</div>
+  </div>
+
+  <div class="login-form-side">
+    <div class="login-card">
+      <h1>Sign in with Telegram</h1>
+      <p class="sub">Message the bot to get a login code, then paste it below.</p>
+
+      <div class="error-msg" id="error-msg">That code's not valid or has expired. Get a new one from the bot.</div>
+
+      <form id="login-form">
+        <div class="field">
+          <label for="login-code">Login code</label>
+          <input id="login-code" placeholder="Paste your 16-character code" maxlength="16" autocomplete="off" required>
+        </div>
+        <button type="submit" class="btn-primary" id="submit-btn">Sign in</button>
+      </form>
+
+      <p class="switch-line">Don't have a code? <a href="https://t.me/your_bot_username" target="_blank" rel="noopener">Message the bot</a> to get one.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ DASHBOARD VIEW ============ -->
+<div id="dashboard-view">
+  <div class="topbar">
+    <div style="display:flex; align-items:center; gap:40px;">
+      <div class="brand-mark"><span class="dot"></span><span>hollow.</span></div>
+      <nav>
+        <a href="#" class="active">Dashboard</a>
+        <a href="#">Coins</a>
+        <a href="#">Boosts</a>
+        <a href="#">Pricing</a>
+      </nav>
+    </div>
+    <div class="topbar-right">
+      <div class="wallet-chip"><span class="live-dot"></span>1 SOL = $73.95</div>
+      <div class="avatar">JD</div>
+      <button class="logout-btn" id="logout-btn" title="Sign out">⏻</button>
+    </div>
+  </div>
+
+  <div class="page">
+    <div class="page-head">
+      <div>
+        <h2>Dashboard</h2>
+        <p>Manage your funds and deployed coins.</p>
+      </div>
+      <button class="btn-amber" id="create-coin-btn">+ Create new coin</button>
+    </div>
+
+    <div class="stat-grid">
+      <div class="card">
+        <div class="card-label-row">
+          <div class="card-label"><span class="icon-badge green">◧</span> Fund wallet</div>
+          <div class="card-actions">
+            <button class="pill-btn withdraw">Withdraw</button>
+            <button class="pill-btn deposit">Deposit</button>
+          </div>
+        </div>
+        <div class="big-number tabular">$0.00</div>
+        <div class="sub-number tabular">0.0000 SOL · 1 SOL = $73.95</div>
+        <div class="address-row">
+          <span class="addr" id="deposit-addr">7xKX...ZP4m — shared test deposit address</span>
+          <button class="copy-btn" id="copy-addr">copy</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-label-row">
+          <div class="card-label"><span class="icon-badge amber">◍</span> Coins</div>
+        </div>
+        <div class="big-number tabular" id="coins-count">0</div>
+        <div class="sub-number">Displayed</div>
+      </div>
+
+      <div class="card">
+        <div class="card-label-row">
+          <div class="card-label"><span class="icon-badge green">↗</span> Active coins</div>
+        </div>
+        <div class="big-number tabular" id="active-coins-count">0</div>
+        <div class="sub-number">Currently trading</div>
+      </div>
+    </div>
+
+    <div class="section-head">
+      <div>
+        <h3>Your coins</h3>
+        <p>Manage and monitor your deployed coins.</p>
+      </div>
+      <div class="section-tools">
+        <div class="search-wrap"><input class="search-input" id="coin-search" placeholder="Search coins..."></div>
+        <select class="filter-select" id="coin-filter"><option>All</option><option>Active</option><option>Paused</option></select>
+      </div>
+    </div>
+
+    <div class="empty-panel" id="coins-empty">
+      <div class="glyph">◍</div>
+      <h4>No coins yet</h4>
+      <p>You haven't created any coins yet.</p>
+      <button class="btn-amber create-first-btn">Create your first coin</button>
+    </div>
+    <div class="coin-grid" id="coins-grid" style="display:none;"></div>
+
+    <div class="section-head">
+      <div>
+        <h3>Boost your coins</h3>
+        <p>Increase a coin's visibility and market impact with strategic boosts.</p>
+      </div>
+    </div>
+
+    <div class="empty-panel" id="boost-empty">
+      <div class="glyph">⚡</div>
+      <h4>No coins to boost</h4>
+      <p>Create a coin first, then boost it from here.</p>
+      <button class="btn-amber create-first-btn">Create your first coin</button>
+    </div>
+    <div class="coin-grid" id="boost-grid" style="display:none;"></div>
+
+    <p class="footnote">All figures on this screen are placeholder data · mockup only</p>
+  </div>
+</div>
+
+<!-- ============ CREATE COIN MODAL ============ -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3 id="modal-title">Create a new coin</h3>
+      <button class="modal-close" id="modal-close">✕</button>
+    </div>
+
+    <div class="step-tracker">
+      <div class="step-tracker-item active" data-step="1"><span class="step-num">1</span>Coin</div>
+      <div class="step-tracker-line"></div>
+      <div class="step-tracker-item" data-step="2"><span class="step-num">2</span>Dev buy</div>
+      <div class="step-tracker-line"></div>
+      <div class="step-tracker-item" data-step="3"><span class="step-num">3</span>Bundle</div>
+    </div>
+
+    <form id="coin-form">
+      <div class="modal-body">
+
+        <!-- STEP 1: coin details -->
+        <div class="wizard-step" data-step="1">
+          <div class="image-upload-row">
+            <label class="image-drop" id="image-drop">
+              <input type="file" id="coin-image" accept="image/*" hidden>
+              <span id="image-drop-icon">◍</span>
+            </label>
+            <div style="flex:1;">
+              <div class="field" style="margin-bottom:10px;">
+                <label for="coin-name">Coin name</label>
+                <input id="coin-name" placeholder="e.g. Hollow Cat" required>
+              </div>
+              <div class="field" style="margin-bottom:0;">
+                <label for="coin-ticker">Ticker</label>
+                <input id="coin-ticker" placeholder="e.g. HCAT" maxlength="10" required>
+              </div>
+            </div>
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label for="coin-desc">Description</label>
+            <input id="coin-desc" placeholder="What's this coin about?">
+          </div>
+        </div>
+
+        <!-- STEP 2: dev buy + slippage -->
+        <div class="wizard-step" data-step="2" style="display:none;">
+          <p class="step-intro">Set how much you buy at launch from the dev wallet, and your slippage tolerance for that buy.</p>
+          <div class="field">
+            <label for="dev-buy">Dev buy amount (SOL)</label>
+            <input id="dev-buy" type="number" min="0" step="0.01" placeholder="0.00" value="0.5">
+            <p class="field-hint" id="dev-buy-hint">≈ $37.00 at current price</p>
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label for="slippage">Slippage tolerance</label>
+            <div class="slippage-row">
+              <button type="button" class="slip-chip" data-val="0.5">0.5%</button>
+              <button type="button" class="slip-chip" data-val="1">1%</button>
+              <button type="button" class="slip-chip active" data-val="2">2%</button>
+              <button type="button" class="slip-chip" data-val="5">5%</button>
+              <input id="slippage" type="number" min="0" step="0.1" value="2" class="slip-custom">
+              <span class="slip-pct">%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 3: bundled buy + wallets -->
+        <div class="wizard-step" data-step="3" style="display:none;">
+          <p class="step-intro">Split an additional buy across extra wallets at launch. Max 24 wallets.</p>
+          <div class="field">
+            <label for="bundle-buy">Bundled buy amount (SOL)</label>
+            <input id="bundle-buy" type="number" min="0" step="0.01" placeholder="0.00" value="1.0">
+            <p class="field-hint" id="bundle-buy-hint">≈ $74.00 total, split across wallets below</p>
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label for="bundle-wallets">Bundled wallets</label>
+            <div class="wallet-slider-row">
+              <input id="bundle-wallets" type="range" min="1" max="24" value="6">
+              <span class="wallet-count-badge" id="wallet-count-badge">6</span>
+            </div>
+            <p class="field-hint" id="per-wallet-hint">≈ 0.1667 SOL per wallet</p>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="modal-foot">
+        <button type="button" class="pill-btn withdraw" id="modal-back" style="padding:10px 16px; display:none;">Back</button>
+        <button type="button" class="pill-btn withdraw" id="modal-cancel" style="padding:10px 16px;">Cancel</button>
+        <button type="button" class="btn-amber" id="modal-next">Continue</button>
+        <button type="submit" class="btn-amber" id="coin-submit-btn" style="display:none;">Launch coin</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span class="dot"></span><span id="toast-text">Coin created</span></div>
+
+<script>
+  // Point this at wherever your backend from the /backend folder is running.
+  var API_BASE = 'http://localhost:4000/api';
+
+  var loginView = document.getElementById('login-view');
+  var dashView = document.getElementById('dashboard-view');
+  var form = document.getElementById('login-form');
+  var submitBtn = document.getElementById('submit-btn');
+  var errorMsg = document.getElementById('error-msg');
+  var logoutBtn = document.getElementById('logout-btn');
+  var codeInput = document.getElementById('login-code');
+
+  function goToDashboard(){
+    loginView.style.display = 'none';
+    dashView.style.display = 'block';
+  }
+  function goToLogin(){
+    dashView.style.display = 'none';
+    loginView.style.display = 'grid';
+    form.reset();
+    errorMsg.style.display = 'none';
+    localStorage.removeItem('hollow_token');
+  }
+
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    errorMsg.style.display = 'none';
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Signing in...';
+
+    fetch(API_BASE + '/auth/redeem', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: codeInput.value.trim() })
+    })
+      .then(function(res){ return res.json().then(function(data){ return { ok: res.ok, data: data }; }); })
+      .then(function(result){
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Sign in';
+        if(!result.ok){
+          errorMsg.textContent = result.data.message || "That code's not valid or has expired. Get a new one from the bot.";
+          errorMsg.style.display = 'block';
+          return;
+        }
+        localStorage.setItem('hollow_token', result.data.token);
+        goToDashboard();
+      })
+      .catch(function(){
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Sign in';
+        errorMsg.textContent = "Couldn't reach the server. Make sure the backend is running.";
+        errorMsg.style.display = 'block';
+      });
+  });
+
+  logoutBtn.addEventListener('click', goToLogin);
+
+  // If a session token is already stored, skip straight to the dashboard.
+  if(localStorage.getItem('hollow_token')){
+    goToDashboard();
+  }
+
+  document.getElementById('copy-addr').addEventListener('click', function(btn){
+    var el = this;
+    el.textContent = 'copied';
+    setTimeout(function(){ el.textContent = 'copy'; }, 1200);
+  });
+
+  /* ---------------- COIN CREATION ---------------- */
+  var coins = [];
+  var coinsGrid = document.getElementById('coins-grid');
+  var coinsEmpty = document.getElementById('coins-empty');
+  var boostGrid = document.getElementById('boost-grid');
+  var boostEmpty = document.getElementById('boost-empty');
+  var coinsCountEl = document.getElementById('coins-count');
+  var activeCountEl = document.getElementById('active-coins-count');
+  var searchInput = document.getElementById('coin-search');
+  var filterSelect = document.getElementById('coin-filter');
+
+  var overlay = document.getElementById('modal-overlay');
+  var coinForm = document.getElementById('coin-form');
+  var imageInput = document.getElementById('coin-image');
+  var imageDrop = document.getElementById('image-drop');
+  var imageIcon = document.getElementById('image-drop-icon');
+  var pendingImage = null;
+
+  var currentStep = 1;
+  var totalSteps = 3;
+  var nextBtn = document.getElementById('modal-next');
+  var backBtn = document.getElementById('modal-back');
+  var submitBtnFinal = document.getElementById('coin-submit-btn');
+  var trackerItems = document.querySelectorAll('.step-tracker-item');
+  var wizardSteps = document.querySelectorAll('.wizard-step');
+
+  function setStep(n){
+    currentStep = n;
+    wizardSteps.forEach(function(s){
+      s.style.display = (parseInt(s.dataset.step) === n) ? 'block' : 'none';
+    });
+    trackerItems.forEach(function(t){
+      var ts = parseInt(t.dataset.step);
+      t.classList.remove('active', 'done');
+      if(ts === n) t.classList.add('active');
+      else if(ts < n) t.classList.add('done');
+    });
+    backBtn.style.display = n === 1 ? 'none' : 'inline-block';
+    nextBtn.style.display = n === totalSteps ? 'none' : 'inline-block';
+    submitBtnFinal.style.display = n === totalSteps ? 'inline-block' : 'none';
+  }
+
+  nextBtn.addEventListener('click', function(){
+    if(currentStep === 1){
+      var name = document.getElementById('coin-name').value.trim();
+      var ticker = document.getElementById('coin-ticker').value.trim();
+      if(!name || !ticker){
+        document.getElementById('coin-name').reportValidity();
+        return;
+      }
+    }
+    if(currentStep < totalSteps) setStep(currentStep + 1);
+  });
+  backBtn.addEventListener('click', function(){
+    if(currentStep > 1) setStep(currentStep - 1);
+  });
+
+  function openModal(){
+    overlay.classList.add('open');
+    setStep(1);
+  }
+  function closeModal(){
+    overlay.classList.remove('open');
+    coinForm.reset();
+    imageDrop.innerHTML = '<span id="image-drop-icon">◍</span>';
+    pendingImage = null;
+    setStep(1);
+    document.querySelectorAll('.slip-chip').forEach(function(c){ c.classList.remove('active'); });
+    document.querySelector('.slip-chip[data-val="2"]').classList.add('active');
+    document.getElementById('slippage').value = 2;
+    document.getElementById('bundle-wallets').value = 6;
+    document.getElementById('wallet-count-badge').textContent = 6;
+  }
+
+  document.getElementById('create-coin-btn').addEventListener('click', openModal);
+  document.querySelectorAll('.create-first-btn').forEach(function(btn){
+    btn.addEventListener('click', openModal);
+  });
+  document.getElementById('modal-close').addEventListener('click', closeModal);
+  document.getElementById('modal-cancel').addEventListener('click', closeModal);
+  overlay.addEventListener('click', function(e){ if(e.target === overlay) closeModal(); });
+
+  /* slippage chips */
+  document.querySelectorAll('.slip-chip').forEach(function(chip){
+    chip.addEventListener('click', function(){
+      document.querySelectorAll('.slip-chip').forEach(function(c){ c.classList.remove('active'); });
+      chip.classList.add('active');
+      document.getElementById('slippage').value = chip.dataset.val;
+    });
+  });
+  document.getElementById('slippage').addEventListener('input', function(){
+    document.querySelectorAll('.slip-chip').forEach(function(c){ c.classList.remove('active'); });
+    var match = document.querySelector('.slip-chip[data-val="' + this.value + '"]');
+    if(match) match.classList.add('active');
+  });
+
+  /* dev buy usd hint */
+  document.getElementById('dev-buy').addEventListener('input', function(){
+    var usd = (parseFloat(this.value) || 0) * 73.95;
+    document.getElementById('dev-buy-hint').textContent = '≈ $' + usd.toFixed(2) + ' at current price';
+  });
+
+  /* bundled wallets slider */
+  var bundleWalletsInput = document.getElementById('bundle-wallets');
+  var walletBadge = document.getElementById('wallet-count-badge');
+  function updateBundleHints(){
+    var count = parseInt(bundleWalletsInput.value);
+    walletBadge.textContent = count;
+    var total = parseFloat(document.getElementById('bundle-buy').value) || 0;
+    var perWallet = count > 0 ? total / count : 0;
+    document.getElementById('per-wallet-hint').textContent = '≈ ' + perWallet.toFixed(4) + ' SOL per wallet';
+    document.getElementById('bundle-buy-hint').textContent = '≈ $' + (total * 73.95).toFixed(2) + ' total, split across wallets below';
+  }
+  bundleWalletsInput.addEventListener('input', updateBundleHints);
+  document.getElementById('bundle-buy').addEventListener('input', updateBundleHints);
+
+  imageDrop.addEventListener('click', function(){ imageInput.click(); });
+  imageInput.addEventListener('change', function(){
+    var file = imageInput.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      pendingImage = ev.target.result;
+      imageDrop.innerHTML = '<img src="' + ev.target.result + '" alt="">';
+    };
+    reader.readAsDataURL(file);
+  });
+
+  function escapeHtml(str){
+    var d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  function showToast(msg){
+    var toast = document.getElementById('toast');
+    document.getElementById('toast-text').textContent = msg;
+    toast.classList.add('show');
+    setTimeout(function(){ toast.classList.remove('show'); }, 2200);
+  }
+
+  function fmtUsd(n){
+    return '$' + Math.round(n).toLocaleString('en-US');
+  }
+
+  function renderCoins(){
+    var query = searchInput.value.trim().toLowerCase();
+    var filter = filterSelect.value;
+    var visible = coins.filter(function(c){
+      var matchesQuery = !query || c.name.toLowerCase().indexOf(query) > -1 || c.ticker.toLowerCase().indexOf(query) > -1;
+      var matchesFilter = filter === 'All' || c.status === filter;
+      return matchesQuery && matchesFilter;
+    });
+
+    coinsEmpty.style.display = coins.length === 0 ? 'block' : 'none';
+    coinsGrid.style.display = coins.length === 0 ? 'none' : 'grid';
+    boostEmpty.style.display = coins.length === 0 ? 'block' : 'none';
+    boostGrid.style.display = coins.length === 0 ? 'none' : 'grid';
+
+    coinsCountEl.textContent = coins.length;
+    activeCountEl.textContent = coins.filter(function(c){ return c.status === 'Active'; }).length;
+
+    coinsGrid.innerHTML = visible.map(function(c){
+      var thumb = c.image ? '<img src="' + c.image + '" alt="">' : '◍';
+      return (
+        '<div class="coin-card">' +
+          '<div class="coin-card-top">' +
+            '<div class="coin-thumb">' + thumb + '</div>' +
+            '<div>' +
+              '<div class="coin-name">' + escapeHtml(c.name) + '</div>' +
+              '<div class="coin-ticker">$' + escapeHtml(c.ticker) + '</div>' +
+            '</div>' +
+            '<div class="coin-status">' + c.status + '</div>' +
+          '</div>' +
+          '<div class="coin-desc">' + (c.desc ? escapeHtml(c.desc) : 'No description provided.') + '</div>' +
+          '<div class="coin-stats-row"><span class="mc-label">Market cap</span><span class="mc-val">' + fmtUsd(c.marketCap) + '</span></div>' +
+          '<div class="bonding-track"><div class="bonding-fill" style="width:' + c.progress + '%"></div></div>' +
+          '<div class="bonding-caption"><span>Bonding curve</span><span>' + c.progress + '%</span></div>' +
+          '<div class="coin-card-actions">' +
+            '<button class="btn-buy">Buy</button>' +
+            '<button class="btn-boost">Boost</button>' +
+          '</div>' +
+        '</div>'
+      );
+    }).join('');
+
+    boostGrid.innerHTML = visible.map(function(c){
+      var thumb = c.image ? '<img src="' + c.image + '" alt="">' : '◍';
+      return (
+        '<div class="coin-card">' +
+          '<div class="coin-card-top">' +
+            '<div class="coin-thumb">' + thumb + '</div>' +
+            '<div>' +
+              '<div class="coin-name">' + escapeHtml(c.name) + '</div>' +
+              '<div class="coin-ticker">$' + escapeHtml(c.ticker) + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="coin-stats-row"><span class="mc-label">Boost level</span><span class="mc-val">Not boosted</span></div>' +
+          '<div class="coin-card-actions">' +
+            '<button class="btn-buy">Boost this coin</button>' +
+          '</div>' +
+        '</div>'
+      );
+    }).join('');
+  }
+
+  coinForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    var submitBtnEl = document.getElementById('coin-submit-btn');
+    var name = document.getElementById('coin-name').value.trim();
+    var ticker = document.getElementById('coin-ticker').value.trim().toUpperCase();
+    var desc = document.getElementById('coin-desc').value.trim();
+    var devBuy = parseFloat(document.getElementById('dev-buy').value) || 0;
+    var slippage = parseFloat(document.getElementById('slippage').value) || 0;
+    var bundleBuy = parseFloat(document.getElementById('bundle-buy').value) || 0;
+    var bundleWallets = parseInt(document.getElementById('bundle-wallets').value) || 1;
+    if(!name || !ticker) return;
+
+    submitBtnEl.disabled = true;
+    submitBtnEl.textContent = 'Launching...';
+
+    setTimeout(function(){
+      var launchSpend = (devBuy + bundleBuy) * 73.95;
+      coins.unshift({
+        name: name,
+        ticker: ticker,
+        desc: desc,
+        image: pendingImage,
+        status: 'Active',
+        marketCap: 4200 + Math.round(launchSpend),
+        progress: Math.min(99, Math.floor(launchSpend / 40)),
+        devBuy: devBuy,
+        slippage: slippage,
+        bundleBuy: bundleBuy,
+        bundleWallets: bundleWallets
+      });
+      submitBtnEl.disabled = false;
+      submitBtnEl.textContent = 'Launch coin';
+      closeModal();
+      renderCoins();
+      showToast('"' + name + '" ($' + ticker + ') launched · ' + bundleWallets + ' bundled wallets');
+    }, 700);
+  });
+
+  searchInput.addEventListener('input', renderCoins);
+  filterSelect.addEventListener('change', renderCoins);
+
+  renderCoins();
+</script>
+
+</body>
+</html>
