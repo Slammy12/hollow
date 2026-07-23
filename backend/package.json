@@ -1,0 +1,19 @@
+{
+  "name": "hollow-backend",
+  "version": "1.0.0",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "bot": "node bot/bot.js"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "better-sqlite3": "^11.10.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "nanoid": "^6.0.0",
+    "node-telegram-bot-api": "^1.2.0"
+  }
+}
