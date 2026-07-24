@@ -1,7 +1,7 @@
 const TelegramBot = require("node-telegram-bot-api").default || require("node-telegram-bot-api");
-const crypto = require("crypto");
 const db = require("../src/db");
 const {
+    getOrCreateUser,
     createLicense,
     getUserLicense,
     grantTrial,
@@ -18,31 +18,15 @@ const bot = new TelegramBot(
     }
 );
 
-function generateCode() {
-    return crypto.randomBytes(8).toString("hex").toUpperCase();
-}
-
-function createLoginCode(telegramId) {
-    const code = generateCode();
-    const expires = Date.now() + (10 * 60 * 1000);
-
-    db.prepare(`
-        INSERT INTO login_codes (telegram_id, code, expires_at)
-        VALUES (?, ?, ?)
-    `).run(telegramId, code, expires);
-
-    return code;
-}
-
 // Command: /start
 bot.onText(/\/start/, (msg) => {
     const text = 
 `⚡ *Welcome to Hollow.*
 
 Available commands:
-• /login - Get a 16-character website login code
+• /login - View your permanent website account code
 • /trial - Claim your 1-day free trial
-• /redeem <code> - Redeem a license key
+• /redeem <code> - Redeem a purchased license key
 • /payment - Purchase access options
 • /status - Check your subscription status`;
 
@@ -52,19 +36,20 @@ Available commands:
 // Command: /login
 bot.onText(/\/login/, (msg) => {
     const telegramId = String(msg.from.id);
-
+    const user = getOrCreateUser(telegramId);
     const access = checkOrGrantAccess(telegramId);
+
     if (!access.allowed) {
         return bot.sendMessage(
             msg.chat.id,
-            "🔴 *Account Access Expired*\n\nYour account access has expired. Please purchase a plan with /payment or redeem a code with /redeem <code>.",
+            `🔴 *Account Access Expired*\n\nYour account code:\n\`${user.account_code}\` \n\nAccess has expired. Use /payment to purchase a plan or /redeem <code> to add time.`,
             { parse_mode: "Markdown" }
         );
     }
 
-    const code = createLoginCode(telegramId);
+    const expiryDate = new Date(access.expiresAt).toUTCString();
+    let msgText = `🔑 *Your Hollow Account Code:*\n\n\`${user.account_code}\` \n\n*Access Valid Until:* ${expiryDate}\n\nEnter this code on the website to sign in.`;
 
-    let msgText = `🔑 *Your Hollow login code:*\n\n\`${code}\` \n\nExpires in 10 minutes.`;
     if (access.autoTrial) {
         msgText += `\n\n🎉 *1-Day Free Trial activated automatically!*`;
     }
@@ -84,10 +69,11 @@ bot.onText(/\/trial/, (msg) => {
         );
     }
 
+    const user = getOrCreateUser(telegramId);
     const expiryDate = new Date(result.expiresAt).toUTCString();
     bot.sendMessage(
         msg.chat.id,
-        `🎉 *Free Trial Activated!*\n\nYou have 1 day of full access.\n*Expires:* ${expiryDate}\n\nUse /login to get your website login code.`,
+        `🎉 *Free Trial Activated!*\n\nYou have 1 day of full access.\n*Account Code:* \`${user.account_code}\` \n*Expires:* ${expiryDate}\n\nEnter your code on the website to sign in.`,
         { parse_mode: "Markdown" }
     );
 });
@@ -116,10 +102,11 @@ bot.onText(/\/redeem(?:\s+(.+))?/, (msg, match) => {
         return bot.sendMessage(msg.chat.id, "❌ Failed to redeem license key.");
     }
 
+    const user = getOrCreateUser(telegramId);
     const expiryDate = new Date(result.expiresAt).toUTCString();
     bot.sendMessage(
         msg.chat.id,
-        `✅ *License Redeemed Successfully!*\n\n• *Plan:* ${result.plan}\n• *Access valid until:* ${expiryDate}\n\nUse /login to get your website login code.`,
+        `✅ *License Redeemed Successfully!*\n\n• *Time Added:* +${result.daysAdded} day(s)\n• *Account Code:* \`${user.account_code}\` \n• *New Access Expiration:* ${expiryDate}\n\nEnter your code on the website to sign in.`,
         { parse_mode: "Markdown" }
     );
 });
@@ -141,6 +128,7 @@ Plans:
 // Command: /status
 bot.onText(/\/status/, (msg) => {
     const telegramId = String(msg.from.id);
+    const user = getOrCreateUser(telegramId);
     const access = getUserLicense(telegramId);
 
     if (access.active) {
@@ -149,13 +137,13 @@ bot.onText(/\/status/, (msg) => {
         const daysLeft = (diffMs / (1000 * 60 * 60 * 24)).toFixed(1);
         bot.sendMessage(
             msg.chat.id,
-            `🟢 *Subscription Active*\n\n• *Plan:* ${access.plan}\n• *Expires:* ${expiryDate}\n• *Time remaining:* ~${daysLeft} day(s)`,
+            `🟢 *Subscription Active*\n\n• *Account Code:* \`${user.account_code}\` \n• *Expires:* ${expiryDate}\n• *Time remaining:* ~${daysLeft} day(s)`,
             { parse_mode: "Markdown" }
         );
     } else {
         bot.sendMessage(
             msg.chat.id,
-            `🔴 *No Active Subscription*\n\nYour access has expired or you don't have a plan.\n\n• Use /trial to claim a 1-day free trial.\n• Use /payment to purchase a plan.\n• Use /redeem <code> to redeem a license key.`,
+            `🔴 *No Active Subscription*\n\n• *Account Code:* \`${user.account_code}\` \n\nYour access has expired or you don't have a plan.\n\n• Use /trial to claim a 1-day free trial.\n• Use /payment to purchase a plan.\n• Use /redeem <code> to redeem a key.`,
             { parse_mode: "Markdown" }
         );
     }
@@ -168,7 +156,7 @@ bot.onText(/\/logincode/, (msg) => {
         return bot.sendMessage(msg.chat.id, "❌ Unauthorized. Admin access required.");
     }
 
-    const license = createLicense(1, "FREE");
+    const license = createLicense(1, "1 DAY");
     bot.sendMessage(
         msg.chat.id,
         `🔑 *1-Day License Key Created*\n\nCode: \`${license.key}\` \nValid for: 1 day\n\nUser redeems with:\n\`/redeem ${license.key}\``,

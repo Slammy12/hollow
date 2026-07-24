@@ -3,96 +3,70 @@ const router = express.Router();
 
 const db = require("../db");
 const { createToken, verifyToken } = require("../auth");
-const { checkOrGrantAccess, getUserLicense } = require("../license");
+const { checkOrGrantAccess, getOrCreateUser } = require("../license");
 
 router.post("/redeem", (req, res) => {
     const { code } = req.body;
 
     if (!code) {
         return res.status(400).json({
-            error: "Missing login code"
+            error: "Missing account code"
         });
     }
 
-    const loginCode = db.prepare(`
-        SELECT *
-        FROM login_codes
-        WHERE code = ?
-    `).get(code);
+    const trimmedCode = code.trim().toUpperCase();
 
-    if (!loginCode) {
+    // 1. Check persistent user account_code
+    let user = db.prepare(`SELECT * FROM users WHERE account_code = ?`).get(trimmedCode);
+
+    // 2. Fallback: check login_codes table for temporary code
+    if (!user) {
+        const loginCodeRecord = db.prepare(`SELECT * FROM login_codes WHERE code = ?`).get(trimmedCode);
+        if (loginCodeRecord) {
+            user = getOrCreateUser(loginCodeRecord.telegram_id);
+        }
+    }
+
+    if (!user) {
         return res.status(400).json({
-            error: "Invalid code"
+            error: "Invalid account code. Message the Telegram bot to get your code."
         });
     }
 
-    if (loginCode.used === 1) {
-        return res.status(400).json({
-            error: "Code already used"
-        });
-    }
-
-    if (Date.now() > loginCode.expires_at) {
-        return res.status(400).json({
-            error: "Code expired"
-        });
-    }
-
-    const telegramId = loginCode.telegram_id;
+    const telegramId = user.telegram_id;
 
     // Check or grant license access
     const access = checkOrGrantAccess(telegramId);
     if (!access.allowed) {
         return res.status(403).json({
-            error: "Account expired. Please purchase a plan via Telegram bot.",
+            error: "Account expired. Please purchase a plan via Telegram bot (@umbralead).",
             expired: true
         });
     }
 
-    let user = db.prepare(`
-        SELECT *
-        FROM users
-        WHERE telegram_id = ?
-    `).get(telegramId);
-
-    if (!user) {
-        const result = db.prepare(`
-            INSERT INTO users (telegram_id)
-            VALUES (?)
-        `).run(telegramId);
-
-        user = db.prepare(`
-            SELECT *
-            FROM users
-            WHERE id = ?
-        `).get(result.lastInsertRowid);
-    }
-
-    db.prepare(`
-        UPDATE login_codes
-        SET used = 1
-        WHERE id = ?
-    `).run(loginCode.id);
+    user = db.prepare(`SELECT * FROM users WHERE telegram_id = ?`).get(telegramId);
 
     const token = createToken(user);
 
     res.json({
         token,
-        user,
+        user: {
+            id: user.id,
+            telegram_id: user.telegram_id,
+            account_code: user.account_code
+        },
         license: {
-            plan: access.plan,
-            expiresAt: access.expiresAt
+            expiresAt: user.expires_at,
+            active: user.expires_at > Date.now()
         }
     });
 });
 
-// Alias POST /api/auth/login to support /login endpoint as well
 router.post("/login", (req, res, next) => {
     req.url = "/redeem";
     router.handle(req, res, next);
 });
 
-// Status check endpoint
 router.get("/status", (req, res) => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -101,10 +75,15 @@ router.get("/status", (req, res) => {
     const token = authHeader.split(" ")[1];
     try {
         const decoded = verifyToken(token);
-        const licenseStatus = getUserLicense(decoded.telegram_id);
+        const user = db.prepare(`SELECT * FROM users WHERE telegram_id = ?`).get(decoded.telegram_id);
+        const active = user && user.expires_at > Date.now();
         res.json({
             user: decoded,
-            license: licenseStatus
+            license: {
+                active,
+                expiresAt: user ? user.expires_at : 0,
+                accountCode: user ? user.account_code : null
+            }
         });
     } catch (err) {
         res.status(401).json({ error: "Invalid or expired token" });

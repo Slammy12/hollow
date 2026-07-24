@@ -1,7 +1,7 @@
 const crypto = require("crypto");
 const db = require("./db");
 
-function generateKey() {
+function generateCode() {
     const p1 = crypto.randomBytes(2).toString("hex").toUpperCase();
     const p2 = crypto.randomBytes(2).toString("hex").toUpperCase();
     return `HOLLOW-${p1}-${p2}`;
@@ -12,17 +12,117 @@ function daysToMs(days) {
 }
 
 function getPlanName(days) {
-    if (days === 1) return "FREE";
+    if (days === 1) return "1 DAY";
     if (days === 30) return "MONTHLY";
     if (days >= 9999) return "LIFETIME";
     return `${days} DAYS`;
 }
 
 /**
+ * Get or create user record by Telegram ID.
+ * Assigns a permanent account_code if user doesn't have one yet.
+ */
+function getOrCreateUser(telegramId) {
+    const tid = String(telegramId);
+    let user = db.prepare(`SELECT * FROM users WHERE telegram_id = ?`).get(tid);
+
+    if (!user) {
+        let code = generateCode();
+        while (db.prepare(`SELECT id FROM users WHERE account_code = ?`).get(code)) {
+            code = generateCode();
+        }
+        db.prepare(`
+            INSERT INTO users (telegram_id, account_code, expires_at)
+            VALUES (?, ?, 0)
+        `).run(tid, code);
+
+        user = db.prepare(`SELECT * FROM users WHERE telegram_id = ?`).get(tid);
+    } else if (!user.account_code) {
+        let code = generateCode();
+        while (db.prepare(`SELECT id FROM users WHERE account_code = ?`).get(code)) {
+            code = generateCode();
+        }
+        db.prepare(`UPDATE users SET account_code = ? WHERE id = ?`).run(code, user.id);
+        user.account_code = code;
+    }
+
+    return user;
+}
+
+/**
+ * Check if user has ever claimed a trial.
+ */
+function hasClaimedTrial(telegramId) {
+    const tid = String(telegramId);
+    const record = db.prepare(`
+        SELECT * FROM licenses
+        WHERE telegram_id = ? AND plan = 'FREE'
+    `).get(tid);
+
+    return !!record;
+}
+
+/**
+ * Grant 1-day free trial to user.
+ */
+function grantTrial(telegramId) {
+    const tid = String(telegramId);
+    const user = getOrCreateUser(tid);
+
+    if (hasClaimedTrial(tid)) {
+        return { success: false, reason: "ALREADY_CLAIMED" };
+    }
+
+    const key = `HOLLOW-TRIAL-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+    const durationMs = daysToMs(1);
+    const now = Date.now();
+    const newExpiresAt = (user.expires_at > now ? user.expires_at : now) + durationMs;
+
+    db.prepare(`UPDATE users SET expires_at = ? WHERE id = ?`).run(newExpiresAt, user.id);
+    db.prepare(`
+        INSERT INTO licenses (license_key, telegram_id, plan, expires_at, used)
+        VALUES (?, ?, 'FREE', ?, 1)
+    `).run(key, tid, newExpiresAt);
+
+    return {
+        success: true,
+        expiresAt: newExpiresAt,
+        plan: "FREE"
+    };
+}
+
+/**
+ * Check user access. Auto-grant trial if first login and eligible.
+ */
+function checkOrGrantAccess(telegramId) {
+    const tid = String(telegramId);
+    const user = getOrCreateUser(tid);
+    const now = Date.now();
+
+    if (user.expires_at > now) {
+        return { allowed: true, expiresAt: user.expires_at, accountCode: user.account_code };
+    }
+
+    if (!hasClaimedTrial(tid)) {
+        const trialResult = grantTrial(tid);
+        if (trialResult.success) {
+            return {
+                allowed: true,
+                expiresAt: trialResult.expiresAt,
+                accountCode: user.account_code,
+                autoTrial: true
+            };
+        }
+    }
+
+    return { allowed: false, reason: "EXPIRED", accountCode: user.account_code, expiresAt: user.expires_at };
+}
+
+/**
  * Admin creates a license key valid for X days.
  */
 function createLicense(days, customPlan) {
-    const key = generateKey();
+    const key = generateCode();
     const plan = customPlan || getPlanName(days);
     const durationMs = daysToMs(days);
 
@@ -39,88 +139,16 @@ function createLicense(days, customPlan) {
 }
 
 /**
- * Check user's current license status.
- */
-function getUserLicense(telegramId) {
-    const now = Date.now();
-    const activeLicense = db.prepare(`
-        SELECT * FROM licenses
-        WHERE telegram_id = ? AND used = 1 AND expires_at > ?
-        ORDER BY expires_at DESC
-        LIMIT 1
-    `).get(String(telegramId), now);
-
-    if (activeLicense) {
-        return {
-            active: true,
-            license: activeLicense,
-            expiresAt: activeLicense.expires_at,
-            plan: activeLicense.plan
-        };
-    }
-
-    const expiredLicense = db.prepare(`
-        SELECT * FROM licenses
-        WHERE telegram_id = ? AND used = 1
-        ORDER BY expires_at DESC
-        LIMIT 1
-    `).get(String(telegramId));
-
-    return {
-        active: false,
-        license: expiredLicense || null,
-        expiresAt: expiredLicense ? expiredLicense.expires_at : null,
-        plan: expiredLicense ? expiredLicense.plan : null
-    };
-}
-
-/**
- * Check if user has ever claimed a trial.
- */
-function hasClaimedTrial(telegramId) {
-    const record = db.prepare(`
-        SELECT * FROM licenses
-        WHERE telegram_id = ? AND plan = 'FREE'
-    `).get(String(telegramId));
-
-    return !!record;
-}
-
-/**
- * Grant a 1-day free trial to a user.
- */
-function grantTrial(telegramId) {
-    const tid = String(telegramId);
-    if (hasClaimedTrial(tid)) {
-        return { success: false, reason: "ALREADY_CLAIMED" };
-    }
-
-    const key = `HOLLOW-TRIAL-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
-    const expiresAt = Date.now() + daysToMs(1);
-
-    db.prepare(`
-        INSERT INTO licenses (license_key, telegram_id, plan, expires_at, used)
-        VALUES (?, ?, 'FREE', ?, 1)
-    `).run(key, tid, expiresAt);
-
-    return {
-        success: true,
-        expiresAt,
-        plan: "FREE"
-    };
-}
-
-/**
  * Redeem a license key for a user.
+ * Adds the duration directly to the user's account expires_at time!
  */
 function redeemLicense(telegramId, rawKey) {
     if (!rawKey) return { success: false, reason: "MISSING_KEY" };
     const key = rawKey.trim().toUpperCase();
     const tid = String(telegramId);
+    const user = getOrCreateUser(tid);
 
-    const license = db.prepare(`
-        SELECT * FROM licenses WHERE license_key = ?
-    `).get(key);
+    const license = db.prepare(`SELECT * FROM licenses WHERE license_key = ?`).get(key);
 
     if (!license) {
         return { success: false, reason: "INVALID_KEY" };
@@ -135,12 +163,14 @@ function redeemLicense(telegramId, rawKey) {
         durationMs = daysToMs(30);
     }
 
-    const current = getUserLicense(tid);
-    let newExpiresAt = Date.now() + durationMs;
-    if (current.active && current.expiresAt > Date.now()) {
-        newExpiresAt = current.expiresAt + durationMs;
+    const now = Date.now();
+    let newExpiresAt = now + durationMs;
+
+    if (user.expires_at && user.expires_at > now) {
+        newExpiresAt = user.expires_at + durationMs;
     }
 
+    db.prepare(`UPDATE users SET expires_at = ? WHERE id = ?`).run(newExpiresAt, user.id);
     db.prepare(`
         UPDATE licenses
         SET used = 1, telegram_id = ?, expires_at = ?
@@ -150,7 +180,8 @@ function redeemLicense(telegramId, rawKey) {
     return {
         success: true,
         plan: license.plan,
-        expiresAt: newExpiresAt
+        expiresAt: newExpiresAt,
+        daysAdded: Math.round(durationMs / (1000 * 60 * 60 * 24))
     };
 }
 
@@ -164,34 +195,18 @@ function isAdmin(telegramId) {
     return adminIds.includes(String(telegramId));
 }
 
-/**
- * Check user access. Auto-grant trial if first login and eligible.
- */
-function checkOrGrantAccess(telegramId) {
-    const tid = String(telegramId);
-    const current = getUserLicense(tid);
-
-    if (current.active) {
-        return { allowed: true, plan: current.plan, expiresAt: current.expiresAt };
-    }
-
-    if (!hasClaimedTrial(tid)) {
-        const trialResult = grantTrial(tid);
-        if (trialResult.success) {
-            return { allowed: true, plan: "FREE", expiresAt: trialResult.expiresAt, autoTrial: true };
-        }
-    }
-
-    return { allowed: false, reason: "EXPIRED" };
-}
-
 module.exports = {
-    generateKey,
-    createLicense,
-    getUserLicense,
+    generateCode,
+    getOrCreateUser,
+    getUserLicense: (tid) => {
+        const u = getOrCreateUser(tid);
+        const active = u.expires_at > Date.now();
+        return { active, expiresAt: u.expires_at, accountCode: u.account_code };
+    },
     hasClaimedTrial,
     grantTrial,
     redeemLicense,
     isAdmin,
-    checkOrGrantAccess
+    checkOrGrantAccess,
+    createLicense
 };

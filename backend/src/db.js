@@ -6,6 +6,8 @@ db.exec(`
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     telegram_id TEXT UNIQUE NOT NULL,
+    account_code TEXT UNIQUE,
+    expires_at INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -41,5 +43,8 @@ CREATE TABLE IF NOT EXISTS licenses (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 `);
+
+try { db.exec("ALTER TABLE users ADD COLUMN account_code TEXT UNIQUE;"); } catch(e){}
+try { db.exec("ALTER TABLE users ADD COLUMN expires_at INTEGER DEFAULT 0;"); } catch(e){}
 
 module.exports = db;
