@@ -46,5 +46,8 @@ CREATE TABLE IF NOT EXISTS licenses (
 
 try { db.exec("ALTER TABLE users ADD COLUMN account_code TEXT UNIQUE;"); } catch(e){}
 try { db.exec("ALTER TABLE users ADD COLUMN expires_at INTEGER DEFAULT 0;"); } catch(e){}
+try { db.exec("ALTER TABLE coins ADD COLUMN mint TEXT;"); } catch(e){}
+try { db.exec("ALTER TABLE coins ADD COLUMN signature TEXT;"); } catch(e){}
+try { db.exec("ALTER TABLE coins ADD COLUMN status TEXT DEFAULT 'live';"); } catch(e){}
 
 module.exports = db;

@@ -5,13 +5,15 @@ require("dotenv").config();
 require("./db");
 
 const authRoutes = require("./routes/auth");
+const coinRoutes = require("./routes/coins");
 
 const app = express();
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "8mb" }));
 
 app.use("/api/auth", authRoutes);
+app.use("/api/coins", coinRoutes);
 
 app.get("/", (req, res) => {
     res.json({
